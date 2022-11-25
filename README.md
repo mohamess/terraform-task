@@ -26,4 +26,6 @@ all variables are declared with types and the most important variables are decla
 - EC2 bastion host created in the public subnet and have a public IP, used to ssh to the EC2 instances
 - Setting the root password by using the EC2 instances userdata
 - Ping from instance1 to instance2 and vice-versa but done in manual way (not the way requested in the task)
-
+- The way i would think it should work is to create a separate script (e.g. [ping.sh](./ping.sh))
+and in terraform use [external_data_source](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/data_source)
+to have the ping status sent as terraform output (I didn't achieve this unfortunately)
