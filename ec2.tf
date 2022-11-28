@@ -1,3 +1,8 @@
+locals {
+  number_of_instances=length(var.ec2_instances)
+  list_of_instances_ips=join (",", [for pip in aws_instance.ec2-instance : pip.private_ip])
+}
+
 resource "random_password" "ec2_root_password" {
   for_each = var.ec2_instances
 
@@ -48,40 +53,49 @@ resource "aws_instance" "ec2-instance" {
   }
 }
 
-resource "null_resource" "ping_instance1" {
-  for_each        = var.ec2_instances
-  provisioner "remote-exec" {
-    inline = [
-      "ssh -o 'StrictHostKeyChecking no' ubuntu@${aws_instance.ec2-instance["instance2"].private_ip} << EOF",
-      "ping -q -c 1  ${aws_instance.ec2-instance["instance1"].private_ip} 2>&1 > /dev/null && echo SUCCESS || echo FAILED",
-      "EOF"
-    ]
-    connection {
-      type = "ssh"
-      user = "ubuntu"
-      agent = true
-      private_key = tls_private_key.private_key.private_key_pem
-      host = aws_instance.bastion_host.public_ip
-      timeout = "10s"
-    }
-  }
-}
 
-resource "null_resource" "ping_instance2" {
-  for_each        = var.ec2_instances
-  provisioner "remote-exec" {
-    inline = [
-      "ssh -o 'StrictHostKeyChecking no' ubuntu@${aws_instance.ec2-instance["instance1"].private_ip} << EOF",
-      "ping -q -c 1  ${aws_instance.ec2-instance["instance2"].private_ip} 2>&1 > /dev/null && echo SUCCESS || echo FAILED",
-      "EOF"
-    ]
-    connection {
-      type = "ssh"
-      user = "ubuntu"
-      agent = true
-      private_key = tls_private_key.private_key.private_key_pem
-      host = aws_instance.bastion_host.public_ip
-      timeout = "10s"
-    }
+#resource "null_resource" "ping_instance1" {
+#  provisioner "remote-exec" {
+#    inline = [
+#      "ssh -o 'StrictHostKeyChecking no' ubuntu@${aws_instance.ec2-instance["instance2"].private_ip} << EOF",
+#      "ping -q -c 1  ${aws_instance.ec2-instance["instance1"].private_ip} 2>&1 > /dev/null && echo SUCCESS || echo FAILED",
+#      "EOF"
+#    ]
+#    connection {
+#      type = "ssh"
+#      user = "ubuntu"
+#      private_key = tls_private_key.private_key.private_key_pem
+#      host = aws_instance.bastion_host.public_ip
+#      timeout = "10s"
+#    }
+#  }
+#}
+#
+#resource "null_resource" "ping_instance2" {
+#  provisioner "remote-exec" {
+#    inline = [
+#      "ssh -o 'StrictHostKeyChecking no' ubuntu@${aws_instance.ec2-instance["instance1"].private_ip} << EOF",
+#      "ping -q -c 1  ${aws_instance.ec2-instance["instance2"].private_ip} 2>&1 > /dev/null && echo SUCCESS || echo FAILED",
+#      "EOF"
+#    ]
+#    connection {
+#      type = "ssh"
+#      user = "ubuntu"
+#      private_key = tls_private_key.private_key.private_key_pem
+#      host = aws_instance.bastion_host.public_ip
+#      timeout = "10s"
+#    }
+#  }
+#}
+
+data "external" "external_ping_status" {
+  program   = [
+    "bash", "${path.module}/ping.sh"
+  ]
+  query = {
+    number_of_instances=local.number_of_instances,
+    bastion_ip=aws_eip.eip_bastion.public_ip,
+    bastion_private_key=tls_private_key.private_key.private_key_pem,
+    instances_ips=local.list_of_instances_ips
   }
 }
